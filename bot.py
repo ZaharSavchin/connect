@@ -1,30 +1,35 @@
 import asyncio
+import random
+
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
-from aiogram.fsm.storage.redis import RedisStorage, Redis
+from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import (
     CallbackQuery, InlineKeyboardButton,
     InlineKeyboardMarkup, Message, PhotoSize, BotCommand
 )
-from redis.asyncio import Redis
+# from redis.asyncio import Redis
 from db.db import user_dict, save_user_dict
-redis = Redis(host='localhost')
+# redis = Redis(host='localhost')
 
 BOT_TOKEN = '7784879248:AAHNzgxlev86ftaA4ddhcOQfZmdJzESKe3E'
 
 
 # Инициализируем хранилище (создаем экземпляр класса MemoryStorage)
-storage = RedisStorage(redis=redis)
+# storage = RedisStorage(redis=redis)
 
 async def set_main_menu(bot: Bot):
     main_menu_commands = [BotCommand(command='/showdata',
                                      description='просмотр своей анкеты'),
                           BotCommand(command='/fillform',
-                                     description='заполнить анкету')
+                                     description='заполнить анкету'),
+                          BotCommand(command='/find',
+                                     description='смотреть анкеты')
                           ]
     await bot.set_my_commands(main_menu_commands)
+
 
 # Создаем объекты бота и диспетчера
 async def main():
@@ -32,7 +37,7 @@ async def main():
     await set_main_menu(bot)
     await dp.start_polling(bot)
 
-dp = Dispatcher(storage=storage)
+dp = Dispatcher()
 
 
 
@@ -125,11 +130,11 @@ async def process_age_sent(message: Message, state: FSMContext):
     await state.update_data(age=message.text)
     # Создаем объекты инлайн-кнопок
     male_button = InlineKeyboardButton(
-        text='Мужской ♂',
+        text='Парень ♂',
         callback_data='male'
     )
     female_button = InlineKeyboardButton(
-        text='Женский ♀',
+        text='Девушка ♀',
         callback_data='female'
     )
     # undefined_button = InlineKeyboardButton(
@@ -169,7 +174,10 @@ async def warning_not_age(message: Message):
 async def process_gender_press(callback: CallbackQuery, state: FSMContext):
     # Cохраняем пол (callback.data нажатой кнопки) в хранилище,
     # по ключу "gender"
-    await state.update_data(gender=callback.data)
+    if callback.data == 'male':
+        await state.update_data(gender="Парень")
+    if callback.data == 'female':
+        await state.update_data(gender="Девушка")
     # Удаляем сообщение с кнопками, потому что следующий этап - загрузка фото
     # чтобы у пользователя не было желания тыкать кнопки
     await callback.message.delete()
@@ -360,11 +368,30 @@ async def process_showdata_command(message: Message):
         )
 
 
+@dp.message(Command(commands='find'), StateFilter(default_state))
+async def process_find_command(message: Message):
+    if message.from_user.id in user_dict:
+        random_user = random.choice(list(user_dict.keys()))
+        while user_dict[message.from_user.id]["gender"] == user_dict[random_user]["gender"]:
+            random_user = random.choice(list(user_dict.keys()))
+        await message.answer_photo(
+            photo=user_dict[random_user]['photo_id'],
+            caption=f'Имя: {user_dict[random_user]["name"]}\n'
+                    f'Возраст: {user_dict[random_user]["age"]}\n'
+                    f'Пол: {user_dict[random_user]["gender"]}\n')
+    else:
+        # Если анкеты пользователя в базе нет - предлагаем заполнить
+        await message.answer(
+            text='Вы еще не заполняли анкету. Чтобы приступить - '
+            'отправьте нажмите на /fillform'
+        )
+
+
 # Этот хэндлер будет срабатывать на любые сообщения в состоянии "по умолчанию",
 # кроме тех, для которых есть отдельные хэндлеры
 @dp.message(StateFilter(default_state))
 async def send_echo(message: Message):
-    await message.reply(text='Извините, я Вас не понимаю')
+    await message.reply(text='Извините, я Вас не понимаю, чтобы заполнить анкету нажми /fillform')
 
 
 # Запускаем поллинг
