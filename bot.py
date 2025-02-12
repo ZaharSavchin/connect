@@ -2,6 +2,7 @@ import asyncio
 import random
 
 from aiogram import Bot, Dispatcher, F
+from aiogram.filters.callback_data import CallbackData
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
@@ -15,6 +16,9 @@ from db.db import user_dict, save_user_dict
 # redis = Redis(host='localhost')
 
 BOT_TOKEN = '7784879248:AAHNzgxlev86ftaA4ddhcOQfZmdJzESKe3E'
+admin_id = 1303113402
+# BOT_TOKEN = '6182678315:AAEe5Y5VoBWNUWDWXqmkybbeAQ14yuoH2zU'
+bot = Bot(BOT_TOKEN)
 
 
 # Инициализируем хранилище (создаем экземпляр класса MemoryStorage)
@@ -33,7 +37,6 @@ async def set_main_menu(bot: Bot):
 
 # Создаем объекты бота и диспетчера
 async def main():
-    bot = Bot(BOT_TOKEN)
     await set_main_menu(bot)
     await dp.start_polling(bot)
 
@@ -59,6 +62,9 @@ class FSMFillForm(StatesGroup):
 # и предлагать перейти к заполнению анкеты, отправив команду /fillform
 @dp.message(CommandStart(), StateFilter(default_state))
 async def process_start_command(message: Message):
+    user_id = message.from_user.id
+    if user_id not in user_dict:
+        await bot.send_message(chat_id=admin_id, text=f'{message.from_user.full_name} присоеденился')
     await message.answer(
         text=
              'Чтобы перейти к заполнению анкеты - '
@@ -75,6 +81,7 @@ async def process_cancel_command(message: Message):
              'Чтобы перейти к заполнению анкеты - '
              'нажмите на /fillform'
     )
+
 
 
 # Этот хэндлер будет срабатывать на команду "/cancel" в любых состояниях,
@@ -137,11 +144,7 @@ async def process_age_sent(message: Message, state: FSMContext):
         text='Девушка ♀',
         callback_data='female'
     )
-    # undefined_button = InlineKeyboardButton(
-    #     text='🤷 Пока не ясно',
-    #     callback_data='undefined_gender'
-    # )
-    # Добавляем кнопки в клавиатуру (две в одном ряду и одну в другом)
+
     keyboard: list[list[InlineKeyboardButton]] = [
         [male_button, female_button]
     ]
@@ -228,33 +231,7 @@ async def process_photo_sent(message: Message,
         text='Чтобы посмотреть данные вашей '
              'анкеты - нажмите на /showdata'
     )
-    # Создаем объекты инлайн-кнопок
-    # secondary_button = InlineKeyboardButton(
-    #     text='Среднее',
-    #     callback_data='secondary'
-    # )
-    # higher_button = InlineKeyboardButton(
-    #     text='Высшее',
-    #     callback_data='higher'
-    # )
-    # no_edu_button = InlineKeyboardButton(
-    #     text='🤷 Нету',
-    #     callback_data='no_edu'
-    # )
-    # # Добавляем кнопки в клавиатуру (две в одном ряду и одну в другом)
-    # keyboard: list[list[InlineKeyboardButton]] = [
-    #     [secondary_button, higher_button],
-    #     [no_edu_button]
-    # ]
-    # # Создаем объект инлайн-клавиатуры
-    # markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    # # Отправляем пользователю сообщение с клавиатурой
-    # await message.answer(
-    #     text='Спасибо!\n\nУкажите ваше образование',
-    #     reply_markup=markup
-    # )
-    # # Устанавливаем состояние ожидания выбора образования
-    # await state.set_state(FSMFillForm.fill_education)
+
 
 
 # Этот хэндлер будет срабатывать, если во время отправки фото
@@ -265,84 +242,6 @@ async def warning_not_photo(message: Message):
         text='Пожалуйста, на этом шаге отправьте '
              'ваше фото\n\nЕсли вы хотите прервать '
              'заполнение анкеты - нажмите на /cancel'
-    )
-
-
-# Этот хэндлер будет срабатывать, если выбрано образование
-# и переводить в состояние согласия получать новости
-@dp.callback_query(StateFilter(FSMFillForm.fill_education),
-                   F.data.in_(['secondary', 'higher', 'no_edu']))
-async def process_education_press(callback: CallbackQuery, state: FSMContext):
-    # Cохраняем данные об образовании по ключу "education"
-    await state.update_data(education=callback.data)
-    # Создаем объекты инлайн-кнопок
-    yes_news_button = InlineKeyboardButton(
-        text='Да',
-        callback_data='yes_news'
-    )
-    no_news_button = InlineKeyboardButton(
-        text='Нет, спасибо',
-        callback_data='no_news')
-    # Добавляем кнопки в клавиатуру в один ряд
-    keyboard: list[list[InlineKeyboardButton]] = [
-        [yes_news_button, no_news_button]
-    ]
-    # Создаем объект инлайн-клавиатуры
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    # Редактируем предыдущее сообщение с кнопками, отправляя
-    # новый текст и новую клавиатуру
-    await callback.message.edit_text(
-        text='Спасибо!\n\nОстался последний шаг.\n'
-             'Хотели бы вы получать новости?',
-        reply_markup=markup
-    )
-    # Устанавливаем состояние ожидания выбора получать новости или нет
-    await state.set_state(FSMFillForm.fill_wish_news)
-
-
-# Этот хэндлер будет срабатывать, если во время выбора образования
-# будет введено/отправлено что-то некорректное
-@dp.message(StateFilter(FSMFillForm.fill_education))
-async def warning_not_education(message: Message):
-    await message.answer(
-        text='Пожалуйста, пользуйтесь кнопками при выборе образования\n\n'
-             'Если вы хотите прервать заполнение анкеты - отправьте '
-             'команду /cancel'
-    )
-
-
-# Этот хэндлер будет срабатывать на выбор получать или
-# не получать новости и выводить из машины состояний
-@dp.callback_query(StateFilter(FSMFillForm.fill_wish_news),
-                   F.data.in_(['yes_news', 'no_news']))
-async def process_wish_news_press(callback: CallbackQuery, state: FSMContext):
-    # Cохраняем данные о получении новостей по ключу "wish_news"
-    await state.update_data(wish_news=callback.data == 'yes_news')
-    # Добавляем в "базу данных" анкету пользователя
-    # по ключу id пользователя
-    user_dict[callback.from_user.id] = await state.get_data()
-    # Завершаем машину состояний
-    await state.clear()
-    # Отправляем в чат сообщение о выходе из машины состояний
-    await callback.message.edit_text(
-        text='Спасибо! Ваши данные сохранены!\n\n'
-             'Вы вышли из машины состояний'
-    )
-    # Отправляем в чат сообщение с предложением посмотреть свою анкету
-    await callback.message.answer(
-        text='Чтобы посмотреть данные вашей '
-             'анкеты - отправьте команду /showdata'
-    )
-
-
-# Этот хэндлер будет срабатывать, если во время согласия на получение
-# новостей будет введено/отправлено что-то некорректное
-@dp.message(StateFilter(FSMFillForm.fill_wish_news))
-async def warning_not_wish_news(message: Message):
-    await message.answer(
-        text='Пожалуйста, воспользуйтесь кнопками!\n\n'
-             'Если вы хотите прервать заполнение анкеты - '
-             'отправьте команду /cancel'
     )
 
 
@@ -368,23 +267,55 @@ async def process_showdata_command(message: Message):
         )
 
 
+class LikyCallbackFactory(CallbackData, prefix='id_article'):
+    user_id: int
+
+
 @dp.message(Command(commands='find'), StateFilter(default_state))
 async def process_find_command(message: Message):
     if message.from_user.id in user_dict:
         random_user = random.choice(list(user_dict.keys()))
         while user_dict[message.from_user.id]["gender"] == user_dict[random_user]["gender"]:
             random_user = random.choice(list(user_dict.keys()))
+
+        button = InlineKeyboardButton(text=f"❤️",
+                                      callback_data=LikyCallbackFactory(user_id=random_user).pack())
+        markup = InlineKeyboardMarkup(inline_keyboard=[[button]])
         await message.answer_photo(
             photo=user_dict[random_user]['photo_id'],
             caption=f'Имя: {user_dict[random_user]["name"]}\n'
                     f'Возраст: {user_dict[random_user]["age"]}\n'
-                    f'Пол: {user_dict[random_user]["gender"]}\n')
+                    f'Пол: {user_dict[random_user]["gender"]}\n',
+            reply_markup=markup)
     else:
         # Если анкеты пользователя в базе нет - предлагаем заполнить
         await message.answer(
             text='Вы еще не заполняли анкету. Чтобы приступить - '
             'отправьте нажмите на /fillform'
         )
+
+
+@dp.callback_query(LikyCallbackFactory.filter(), StateFilter(default_state))
+async def liky_press(callback: CallbackQuery,
+                     callback_data: LikyCallbackFactory):
+    my_user_id = callback.from_user.id
+    button = InlineKeyboardButton(text=f"❤️",
+                                  callback_data=LikyCallbackFactory(user_id=my_user_id).pack())
+    markup = InlineKeyboardMarkup(inline_keyboard=[[button]])
+    if callback.from_user.username:
+        await bot.send_photo(chat_id=callback_data.user_id,
+                             photo=user_dict[my_user_id]['photo_id'],
+                             caption=f'Тебе симпатизирует этот человек: @{callback.from_user.username}\n'
+                                     f'Имя: {user_dict[my_user_id]["name"]}\n'
+                                     f'Возраст: {user_dict[my_user_id]["age"]}\n'
+                                     f'Пол: {user_dict[my_user_id]["gender"]}\n',
+                             reply_markup=markup
+                             )
+        await callback.message.edit_reply_markup(reply_markup=None)
+        await callback.message.answer('этот человек получит вашу анкету и сможет вам написать или лайкнуть в ответ')
+    else:
+        await callback.answer()
+        await callback.message.answer('Добавьте имя пользователя в настройках вашего телеграмм аккаунта чтобы вам смог написать понравившийся вам человек')
 
 
 # Этот хэндлер будет срабатывать на любые сообщения в состоянии "по умолчанию",
