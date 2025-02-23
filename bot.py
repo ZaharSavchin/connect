@@ -17,7 +17,11 @@ from db.db import user_dict, save_user_dict
 
 BOT_TOKEN = '7784879248:AAHNzgxlev86ftaA4ddhcOQfZmdJzESKe3E'
 admin_id = 1303113402
+
+
 # BOT_TOKEN = '6182678315:AAEe5Y5VoBWNUWDWXqmkybbeAQ14yuoH2zU'
+# admin_id = 6031519620
+
 bot = Bot(BOT_TOKEN)
 
 
@@ -70,6 +74,39 @@ async def process_start_command(message: Message):
              'Чтобы перейти к заполнению анкеты - '
              'нажмите на /fillform'
     )
+
+
+@dp.message(Command(commands='users_amount'), StateFilter(default_state))
+async def process_cancel_command(message: Message):
+    await message.answer(str(len(user_dict)))
+
+
+@dp.message(F.text.startswith('bot send ads to users'))
+async def send_ads(message: Message):
+    if message.from_user.id == admin_id:
+        photo_url = 'none'
+        text = message.text[message.text.find("}") + 1:]
+        if "<" in text or ">" in text:
+            text = text.replace(">", "&gt;").replace("<", "&lt;")
+        if "{" in message.text and "}" in message.text:
+            photo_url = message.text[message.text.find("{") + 1: message.text.find("}")]
+        counter = 0
+        for user_id in user_dict.copy().keys():
+            try:
+                if photo_url != 'none':
+                    await bot.send_photo(chat_id=user_id,
+                                         photo=photo_url,
+                                         caption=text)
+                else:
+                    await bot.send_message(chat_id=user_id,
+                                           text=text)
+                counter += 1
+            except Exception:
+                await bot.send_message(chat_id=admin_id, text=f'пользователь недоступен {user_id} недоступен')
+            await asyncio.sleep(1)
+
+        await bot.send_message(chat_id=admin_id, text=f'{counter} сообщений доставлено')
+
 
 
 # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии
