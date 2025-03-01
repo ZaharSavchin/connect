@@ -11,12 +11,13 @@ from aiogram.types import (
     CallbackQuery, InlineKeyboardButton,
     InlineKeyboardMarkup, Message, PhotoSize, BotCommand
 )
+
+from id_token import admin_id, BOT_TOKEN
 # from redis.asyncio import Redis
 from db.db import user_dict, save_user_dict
 # redis = Redis(host='localhost')
 
-BOT_TOKEN = '7784879248:AAHNzgxlev86ftaA4ddhcOQfZmdJzESKe3E'
-admin_id = 1303113402
+
 
 
 # BOT_TOKEN = '6182678315:AAEe5Y5VoBWNUWDWXqmkybbeAQ14yuoH2zU'
