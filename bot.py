@@ -62,6 +62,7 @@ class FSMFillForm(StatesGroup):
     fill_education = State()   # Состояние ожидания выбора образования
     fill_wish_news = State()   # Состояние ожидания выбора получать ли новости
     fill_sity = State()
+    fill_description = State()
 
 
 
@@ -248,10 +249,9 @@ async def warning_not_gender(message: Message):
 async def process_sity_sent(message: Message, state: FSMContext):
     await state.update_data(sity=message.text)
     await message.answer(
-        text='Спасибо! А теперь загрузите, пожалуйста, ваше фото'
+        text='Спасибо! А теперь напишите немного о себе...'
     )
-    # Устанавливаем состояние ожидания загрузки фото
-    await state.set_state(FSMFillForm.upload_photo)
+    await state.set_state(FSMFillForm.fill_description)
 
 
 
@@ -267,6 +267,25 @@ async def warning_not_sity(message: Message):
 
 
 
+
+@dp.message(StateFilter(FSMFillForm.fill_description), F.text.len() <= 100)
+async def process_description_sent(message: Message, state: FSMContext):
+    await state.update_data(description=message.text)
+    await message.answer(
+        text='Спасибо! А теперь загрузите, пожалуйста, ваше фото'
+    )
+    # Устанавливаем состояние ожидания загрузки фото
+    await state.set_state(FSMFillForm.upload_photo)
+
+
+
+@dp.message(StateFilter(FSMFillForm.fill_description))
+async def warning_not_description(message: Message):
+    await message.answer(
+        text='То, что вы отправили не похоже на текст описания\n\n'
+             'Пожалуйста, напишите немного о себе\n\n'
+             'Если вы хотите прервать заполнение анкеты - '
+             'нажмите на /cancel')
 
 
 
@@ -326,6 +345,7 @@ async def process_showdata_command(message: Message):
                     f'Возраст: {user_dict[message.from_user.id]["age"]}\n'
                     f'Пол: {user_dict[message.from_user.id]["gender"]}\n'
                     f'Город: {user_dict[message.from_user.id]["sity"]}\n'
+                    f'Обо мне: {user_dict[message.from_user.id]["description"]}\n'
                     # f'Образование: {user_dict[message.from_user.id]["education"]}\n'
                     # f'Получать новости: {user_dict[message.from_user.id]["wish_news"]}'
         )
@@ -356,7 +376,8 @@ async def process_find_command(message: Message):
             caption=f'Имя: {user_dict[random_user]["name"]}\n'
                     f'Возраст: {user_dict[random_user]["age"]}\n'
                     f'Пол: {user_dict[random_user]["gender"]}\n'
-                    f'Город: {user_dict[message.from_user.id]["sity"]}\n',
+                    f'Город: {user_dict[message.from_user.id]["sity"]}\n'
+                    f'Обо мне: {user_dict[message.from_user.id]["description"]}\n',
             reply_markup=markup)
     else:
         # Если анкеты пользователя в базе нет - предлагаем заполнить
@@ -380,7 +401,8 @@ async def liky_press(callback: CallbackQuery,
                                      f'Имя: {user_dict[my_user_id]["name"]}\n'
                                      f'Возраст: {user_dict[my_user_id]["age"]}\n'
                                      f'Пол: {user_dict[my_user_id]["gender"]}\n'
-                                     f'Город: {user_dict[message.from_user.id]["sity"]}\n',
+                                     f'Город: {user_dict[my_user_id]["sity"]}\n'
+                                     f'Обо мне: {user_dict[my_user_id]["description"]}\n',
                              reply_markup=markup
                              )
         await callback.message.edit_reply_markup(reply_markup=None)
