@@ -20,8 +20,8 @@ from db.db import user_dict, save_user_dict
 
 
 
-# BOT_TOKEN = '6182678315:AAEe5Y5VoBWNUWDWXqmkybbeAQ14yuoH2zU'
-# admin_id = 6031519620
+BOT_TOKEN = '6182678315:AAEe5Y5VoBWNUWDWXqmkybbeAQ14yuoH2zU'
+admin_id = 6031519620
 
 bot = Bot(BOT_TOKEN)
 
@@ -61,6 +61,8 @@ class FSMFillForm(StatesGroup):
     upload_photo = State()     # Состояние ожидания загрузки фото
     fill_education = State()   # Состояние ожидания выбора образования
     fill_wish_news = State()   # Состояние ожидания выбора получать ли новости
+    fill_sity = State()
+
 
 
 # Этот хэндлер будет срабатывать на команду /start вне состояний
@@ -223,10 +225,11 @@ async def process_gender_press(callback: CallbackQuery, state: FSMContext):
     # чтобы у пользователя не было желания тыкать кнопки
     await callback.message.delete()
     await callback.message.answer(
-        text='Спасибо! А теперь загрузите, пожалуйста, ваше фото'
+        text='Спасибо! А теперь отправьте название вашего города'
     )
     # Устанавливаем состояние ожидания загрузки фото
-    await state.set_state(FSMFillForm.upload_photo)
+    await state.set_state(FSMFillForm.fill_sity)
+
 
 
 # Этот хэндлер будет срабатывать, если во время выбора пола
@@ -238,6 +241,34 @@ async def warning_not_gender(message: Message):
              'при выборе пола\n\nЕсли вы хотите прервать '
              'заполнение анкеты - нажмите на /cancel'
     )
+
+
+
+@dp.message(StateFilter(FSMFillForm.fill_sity), F.text.isalpha())
+async def process_sity_sent(message: Message, state: FSMContext):
+    await state.update_data(sity=message.text)
+    await message.answer(
+        text='Спасибо! А теперь загрузите, пожалуйста, ваше фото'
+    )
+    # Устанавливаем состояние ожидания загрузки фото
+    await state.set_state(FSMFillForm.upload_photo)
+
+
+
+# Этот хэндлер будет срабатывать, если во время ввода имени
+# будет введено что-то некорректное
+@dp.message(StateFilter(FSMFillForm.fill_sity))
+async def warning_not_sity(message: Message):
+    await message.answer(
+        text='То, что вы отправили не похоже на название города\n\n'
+             'Пожалуйста, введите ваш Город\n\n'
+             'Если вы хотите прервать заполнение анкеты - '
+             'нажмите на /cancel')
+
+
+
+
+
 
 
 # Этот хэндлер будет срабатывать, если отправлено фото
@@ -294,6 +325,7 @@ async def process_showdata_command(message: Message):
             caption=f'Имя: {user_dict[message.from_user.id]["name"]}\n'
                     f'Возраст: {user_dict[message.from_user.id]["age"]}\n'
                     f'Пол: {user_dict[message.from_user.id]["gender"]}\n'
+                    f'Город: {user_dict[message.from_user.id]["sity"]}\n'
                     # f'Образование: {user_dict[message.from_user.id]["education"]}\n'
                     # f'Получать новости: {user_dict[message.from_user.id]["wish_news"]}'
         )
@@ -323,7 +355,8 @@ async def process_find_command(message: Message):
             photo=user_dict[random_user]['photo_id'],
             caption=f'Имя: {user_dict[random_user]["name"]}\n'
                     f'Возраст: {user_dict[random_user]["age"]}\n'
-                    f'Пол: {user_dict[random_user]["gender"]}\n',
+                    f'Пол: {user_dict[random_user]["gender"]}\n'
+                    f'Город: {user_dict[message.from_user.id]["sity"]}\n',
             reply_markup=markup)
     else:
         # Если анкеты пользователя в базе нет - предлагаем заполнить
@@ -346,7 +379,8 @@ async def liky_press(callback: CallbackQuery,
                              caption=f'Тебе симпатизирует этот человек: @{callback.from_user.username}\n'
                                      f'Имя: {user_dict[my_user_id]["name"]}\n'
                                      f'Возраст: {user_dict[my_user_id]["age"]}\n'
-                                     f'Пол: {user_dict[my_user_id]["gender"]}\n',
+                                     f'Пол: {user_dict[my_user_id]["gender"]}\n'
+                                     f'Город: {user_dict[message.from_user.id]["sity"]}\n',
                              reply_markup=markup
                              )
         await callback.message.edit_reply_markup(reply_markup=None)
