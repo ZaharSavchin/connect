@@ -249,7 +249,7 @@ async def warning_not_gender(message: Message):
 async def process_sity_sent(message: Message, state: FSMContext):
     await state.update_data(sity=message.text)
     await message.answer(
-        text='Спасибо! А теперь напишите немного о себе...'
+        text='Спасибо! А теперь напишите немного о себе... (до 100 символов)'
     )
     await state.set_state(FSMFillForm.fill_description)
 
@@ -282,7 +282,8 @@ async def process_description_sent(message: Message, state: FSMContext):
 @dp.message(StateFilter(FSMFillForm.fill_description))
 async def warning_not_description(message: Message):
     await message.answer(
-        text='То, что вы отправили не похоже на текст описания\n\n'
+        text='То, что вы отправили не похоже на текст описания, '
+             'или оно длиннее 100 символов\n\n'
              'Пожалуйста, напишите немного о себе\n\n'
              'Если вы хотите прервать заполнение анкеты - '
              'нажмите на /cancel')
