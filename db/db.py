@@ -3,7 +3,7 @@ from redis import Redis
 
 user_dict: dict[int, dict[str, str | int | bool]] = {}
 
-r = Redis(host='127.0.0.1', port=6379, db=6)
+r = Redis(host='127.0.0.1', port=6379, db=5)
 
 
 user_dict_json = r.get('users_db_connect')

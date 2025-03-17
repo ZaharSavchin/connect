@@ -81,8 +81,82 @@ async def process_start_command(message: Message):
 
 
 @dp.message(Command(commands='users_amount'), StateFilter(default_state))
-async def process_cancel_command(message: Message):
+async def process_users_command(message: Message):
     await message.answer(str(len(user_dict)))
+
+
+@dp.message(Command(commands='all_users'), StateFilter(default_state))
+async def process_all_users_command(message: Message):
+    if message.from_user.id == admin_id:
+        users = user_dict.copy()
+        for user in users:
+            try:
+                await message.answer_photo(
+                    photo=users[user]['photo_id'],
+                    caption=f'Имя: {users[user]["name"]}\n'
+                            f'Возраст: {users[user]["age"]}\n'
+                            f'Пол: {users[user]["gender"]}\n'
+                            f'Город: {users[user]["sity"]}\n'
+                            f'Обо мне: {users[user]["description"]}\n')
+            except Exception as err:
+                print(err)
+            await asyncio.sleep(0.3)
+
+
+@dp.message(Command(commands='users_id'), StateFilter(default_state))
+async def process_all_users_command(message: Message):
+    message_len = 50
+    if message.from_user.id == admin_id:
+        users = [user_id for user_id in user_dict.copy().keys()]
+        if len(users) <= message_len:
+            result = ''
+            for user in users:
+                result += str(user) + '\n'
+            await message.answer(result)
+        else:
+            messages = len(users) // message_len
+            counter = 0
+            for i in range(messages + 1):
+                message_users = [user for user in users[counter: counter + message_len]]
+                result = ''
+                for user in message_users:
+                    result += str(user) + '\n'
+                counter += message_len
+                try:
+                    await message.answer(f"{result}")
+                except Exception as err:
+                    print(err)
+
+
+@dp.message(Command(commands='ages'), StateFilter(default_state))
+async def process_ages_command(message: Message):
+    if message.from_user.id == admin_id:
+        ages = {}
+        users = user_dict.copy()
+        for user in users:
+            if int(users[user]['age']) in ages:
+                ages[int(users[user]['age'])] += 1
+            else:
+                ages[int(users[user]['age'])] = 1
+        sorted_ages = dict(sorted(ages.items()))
+        result = ''
+        for age, amount in sorted_ages.items():
+            result += f'{str(age)}: {str(amount)}\n'
+        await message.answer(result)
+
+
+@dp.message(Command(commands='admin'), StateFilter(default_state))
+async def process_admin_command(message: Message):
+    if message.from_user.id == admin_id:
+        await message.answer(
+            '/users_amount - количество пользователей\n'
+            '/all_users - просмотр всех анкет\n'
+            '/users_id - список ID пользователей\n'
+            '/ages - график возрастов'
+        )
+
+
+
 
 
 @dp.message(F.text.startswith('bot send ads to users'))
