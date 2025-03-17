@@ -20,8 +20,8 @@ from db.db import user_dict, save_user_dict
 
 
 
-BOT_TOKEN = '6182678315:AAEe5Y5VoBWNUWDWXqmkybbeAQ14yuoH2zU'
-admin_id = 6031519620
+# BOT_TOKEN = '6182678315:AAEe5Y5VoBWNUWDWXqmkybbeAQ14yuoH2zU'
+# admin_id = 6031519620
 
 bot = Bot(BOT_TOKEN)
 
